@@ -1,0 +1,14 @@
+# environment
+venv/
+
+# data
+data/
+*.csv
+
+# notebooks
+.ipynb_checkpoints/
+
+# python cache
+__pycache__/
+*.pyc
+
