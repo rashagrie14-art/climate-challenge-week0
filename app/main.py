@@ -109,6 +109,11 @@ def load_all_data():
     # ================================================================
     
     drive_links = {
+        'ethiopia': 'https://drive.google.com/file/d/1WzxOx68C8RtqTykUxnUR3AvbfPmXzZek/view?usp=sharing',  # Add your link: 'https://drive.google.com/file/d/YOUR_ID/view?usp=sharing'
+        'kenya': 'https://drive.google.com/file/d/1hpDjPfKihRCNScDy-KPL1xurTZt-CoGM/view?usp=drive_link',      # Add your link
+        'nigeria': 'https://drive.google.com/file/d/1q2Tg1AOZR6RJ2lP5tX0ZA4JzcVnpDFMs/view?usp=drive_link',    # Add your link
+        'tanzania': 'https://drive.google.com/file/d/133g8zUpcLf0T15X-UNRFMAjO6ncLZtHT/view?usp=drive_link',   # Add your link
+        'sudan': 'https://drive.google.com/file/d/1ZH542Ytxr1lXzg-r6Clz3nqAC8X-xG6P/view?usp=drive_link'      # Add your link
 
         'ethiopia': 'https://drive.google.com/file/d/1WzxOx68C8RtqTykUxnUR3AvbfPmXzZek/view?usp=drive_link',  # PASTE YOUR ETHIOPIA CSV LINK HERE
 
