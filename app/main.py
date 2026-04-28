@@ -102,12 +102,24 @@ def load_all_data():
     # ================================================================
     # IMPORTANT: ADD YOUR GOOGLE DRIVE LINKS BELOW
     # ================================================================
+    # How to get links:
+    # 1. Upload CSV to Google Drive
+    # 2. Right-click → Share → "Anyone with link"
+    # 3. Copy the link and paste below
+    # ================================================================
+    
     drive_links = {
+
         'ethiopia': 'https://drive.google.com/file/d/1WzxOx68C8RtqTykUxnUR3AvbfPmXzZek/view?usp=drive_link',  # PASTE YOUR ETHIOPIA CSV LINK HERE
+
         'kenya': 'https://drive.google.com/file/d/1hpDjPfKihRCNScDy-KPL1xurTZt-CoGM/view?usp=drive_link',      # PASTE YOUR KENYA CSV LINK HERE
+
         'nigeria': 'https://drive.google.com/file/d/1q2Tg1AOZR6RJ2lP5tX0ZA4JzcVnpDFMs/view?usp=drive_link',    # PASTE YOUR NIGERIA CSV LINK HERE
+
         'tanzania': 'https://drive.google.com/file/d/133g8zUpcLf0T15X-UNRFMAjO6ncLZtHT/view?usp=drive_link',   # PASTE YOUR TANZANIA CSV LINK HERE
+
         'sudan': 'https://drive.google.com/file/d/1ZH542Ytxr1lXzg-r6Clz3nqAC8X-xG6P/view?usp=drive_link'       # PASTE YOUR SUDAN CSV LINK HERE
+
     }
     
     dataframes = []
