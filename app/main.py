@@ -6,10 +6,13 @@ import seaborn as sns
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import requests
+import io
+import re
 import warnings
 warnings.filterwarnings('ignore')
 
+# Page configuration
 st.set_page_config(
     page_title="East Africa Climate Dashboard",
     page_icon="🌍",
@@ -17,6 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Custom CSS
 st.markdown("""
     <style>
     .main-header {
@@ -40,39 +44,116 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Title
 st.markdown('<h1 class="main-header">🌍 East Africa Climate Vulnerability Dashboard</h1>', unsafe_allow_html=True)
 st.markdown("---")
 
+# ============================================================================
+# DATA LOADING FUNCTIONS
+# ============================================================================
+
+def get_google_drive_direct_url(share_url):
+    """Convert Google Drive share URL to direct download URL"""
+    patterns = [
+        r'/d/([a-zA-Z0-9_-]+)',
+        r'id=([a-zA-Z0-9_-]+)',
+        r'file/d/([a-zA-Z0-9_-]+)'
+    ]
+    
+    file_id = None
+    for pattern in patterns:
+        match = re.search(pattern, share_url)
+        if match:
+            file_id = match.group(1)
+            break
+    
+    if not file_id:
+        return None
+    
+    return f"https://drive.google.com/uc?export=download&id={file_id}"
+
+def download_csv_from_google_drive(share_url):
+    """Download CSV from Google Drive"""
+    try:
+        download_url = get_google_drive_direct_url(share_url)
+        if not download_url:
+            return None
+        
+        response = requests.get(download_url)
+        
+        # Handle large files with confirmation
+        if 'quota' in response.text.lower() or 'confirm' in response.text:
+            confirm_match = re.search(r'confirm=([^&]+)', response.text)
+            if confirm_match:
+                confirm = confirm_match.group(1)
+                download_url = f"{download_url}&confirm={confirm}"
+                response = requests.get(download_url)
+        
+        df = pd.read_csv(io.BytesIO(response.content))
+        return df
+    except Exception as e:
+        st.sidebar.warning(f"Error downloading: {e}")
+        return None
+
 @st.cache_data
 def load_all_data():
-    """Load all cleaned country data"""
-    countries = ['ethiopia', 'kenya', 'nigeria', 'tanzania', 'rwanda']
+    """Load all cleaned country data from Google Drive"""
+    
+    # ================================================================
+    # IMPORTANT: ADD YOUR GOOGLE DRIVE LINKS BELOW
+    # ================================================================
+    drive_links = {
+        'ethiopia': 'https://drive.google.com/file/d/1WzxOx68C8RtqTykUxnUR3AvbfPmXzZek/view?usp=drive_link',  # PASTE YOUR ETHIOPIA CSV LINK HERE
+        'kenya': 'https://drive.google.com/file/d/1hpDjPfKihRCNScDy-KPL1xurTZt-CoGM/view?usp=drive_link',      # PASTE YOUR KENYA CSV LINK HERE
+        'nigeria': 'https://drive.google.com/file/d/1q2Tg1AOZR6RJ2lP5tX0ZA4JzcVnpDFMs/view?usp=drive_link',    # PASTE YOUR NIGERIA CSV LINK HERE
+        'tanzania': 'https://drive.google.com/file/d/133g8zUpcLf0T15X-UNRFMAjO6ncLZtHT/view?usp=drive_link',   # PASTE YOUR TANZANIA CSV LINK HERE
+        'sudan': 'https://drive.google.com/file/d/1ZH542Ytxr1lXzg-r6Clz3nqAC8X-xG6P/view?usp=drive_link'       # PASTE YOUR SUDAN CSV LINK HERE
+    }
+    
     dataframes = []
     
-    for country in countries:
-        try:
-            df = pd.read_csv(f'data/{country}_clean.csv')
-            df['Country'] = country.capitalize()
-            df['Date'] = pd.to_datetime(df['Date'])
-            dataframes.append(df)
-            st.sidebar.success(f"✓ Loaded {country.capitalize()}")
-        except FileNotFoundError:
-            st.sidebar.warning(f"⚠ Data for {country.capitalize()} not found")
+    for country, link in drive_links.items():
+        if link:
+            with st.spinner(f'Loading {country} data from Google Drive...'):
+                df = download_csv_from_google_drive(link)
+                if df is not None:
+                    # Ensure required columns exist
+                    if 'Date' not in df.columns and 'YEAR' in df.columns and 'DOY' in df.columns:
+                        df['Date'] = pd.to_datetime(df['YEAR'] * 1000 + df['DOY'], format='%Y%j')
+                    elif 'Date' in df.columns:
+                        df['Date'] = pd.to_datetime(df['Date'])
+                    
+                    df['Country'] = country.capitalize()
+                    dataframes.append(df)
+                    st.sidebar.success(f"✓ Loaded {country.capitalize()}")
+                else:
+                    st.sidebar.error(f"✗ Failed to load {country.capitalize()}")
+        else:
+            st.sidebar.warning(f"⚠ No Google Drive link provided for {country.capitalize()}")
     
-    if dataframes:
-        combined = pd.concat(dataframes, ignore_index=True)
-        combined['Year'] = combined['Date'].dt.year
-        combined['Month'] = combined['Date'].dt.month
-        return combined
-    else:
-        return pd.DataFrame()
+    if not dataframes:
+        st.error("❌ No data loaded. Please provide Google Drive links for at least one country.")
+        st.stop()
+    
+    combined = pd.concat(dataframes, ignore_index=True)
+    combined['Year'] = combined['Date'].dt.year
+    combined['Month'] = combined['Date'].dt.month
+    return combined
 
-with st.spinner("Loading climate data..."):
+# ============================================================================
+# LOAD DATA
+# ============================================================================
+
+with st.spinner("Loading climate data from Google Drive..."):
     df = load_all_data()
 
 if df.empty:
-    st.error("No data found. Please ensure cleaned CSV files are in the data/ directory.")
+    st.error("No data available. Please check your Google Drive links.")
     st.stop()
+
+# ============================================================================
+# SIDEBAR FILTERS
+# ============================================================================
 
 st.sidebar.markdown("## 🎛️ Dashboard Controls")
 
@@ -80,8 +161,7 @@ countries = sorted(df['Country'].unique())
 selected_countries = st.sidebar.multiselect(
     "🌍 Select Countries",
     options=countries,
-    default=countries[:3] if len(countries) >= 3 else countries,
-    help="Choose one or more countries to compare"
+    default=countries[:3] if len(countries) >= 3 else countries
 )
 
 min_year = int(df['Year'].min())
@@ -90,17 +170,17 @@ year_range = st.sidebar.slider(
     "📅 Select Year Range",
     min_value=min_year,
     max_value=max_year,
-    value=(min_year, max_year-2),
+    value=(min_year, max_year - 2),
     step=1
 )
 
 variable_options = {
-    'T2M': 'Temperature at 2 Meters (°C)',
-    'T2M_MAX': 'Maximum Temperature (°C)',
-    'T2M_MIN': 'Minimum Temperature (°C)',
-    'PRECTOTCORR': 'Precipitation (mm)',
-    'RH2M': 'Relative Humidity (%)',
-    'WS2M': 'Wind Speed at 2 Meters (m/s)'
+    'T2M': '🌡️ Temperature at 2 Meters (°C)',
+    'T2M_MAX': '🔥 Maximum Temperature (°C)',
+    'T2M_MIN': '❄️ Minimum Temperature (°C)',
+    'PRECTOTCORR': '💧 Precipitation (mm)',
+    'RH2M': '💨 Relative Humidity (%)',
+    'WS2M': '🌬️ Wind Speed at 2 Meters (m/s)'
 }
 selected_variable = st.sidebar.selectbox(
     "📊 Select Variable",
@@ -120,6 +200,10 @@ st.sidebar.metric("Total Records", f"{len(filtered_df):,}")
 st.sidebar.metric("Countries Selected", len(selected_countries))
 st.sidebar.metric("Date Range", f"{year_range[0]} - {year_range[1]}")
 
+# ============================================================================
+# MAIN CONTENT TABS
+# ============================================================================
+
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📈 Temperature Trends",
     "💧 Precipitation Analysis",
@@ -127,6 +211,10 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Statistical Comparison",
     "🏆 Vulnerability Ranking"
 ])
+
+# ============================================================================
+# TAB 1: TEMPERATURE TRENDS
+# ============================================================================
 
 with tab1:
     st.markdown('<h2 class="sub-header">📈 Temperature Trends Analysis</h2>', unsafe_allow_html=True)
@@ -175,14 +263,10 @@ with tab1:
                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
     fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True)
-    
-    with st.expander("💡 Key Temperature Insights"):
-        st.markdown("""
-        - **Nigeria** shows the highest and fastest-warming temperatures
-        - **Ethiopia** maintains the coolest climate due to highland elevation
-        - **Seasonal patterns** show peak temperatures in February-March and lowest in July-August
-        - **Temperature range** varies significantly by latitude and elevation
-        """)
+
+# ============================================================================
+# TAB 2: PRECIPITATION ANALYSIS
+# ============================================================================
 
 with tab2:
     st.markdown('<h2 class="sub-header">💧 Precipitation Variability Analysis</h2>', unsafe_allow_html=True)
@@ -229,14 +313,10 @@ with tab2:
                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
     fig.update_layout(height=450)
     st.plotly_chart(fig, use_container_width=True)
-    
-    with st.expander("💡 Key Precipitation Insights"):
-        st.markdown("""
-        - **Ethiopia** shows the highest precipitation variability (highest CV)
-        - **Nigeria** has the most stable and abundant rainfall
-        - **Dry season** (November-February) affects all countries, but most severely in Ethiopia
-        - **Bimodal rainfall** patterns exist in Kenya and Tanzania (long rains March-May, short rains October-December)
-        """)
+
+# ============================================================================
+# TAB 3: EXTREME EVENTS
+# ============================================================================
 
 with tab3:
     st.markdown('<h2 class="sub-header">🔥 Extreme Events Analysis</h2>', unsafe_allow_html=True)
@@ -305,14 +385,10 @@ with tab3:
     fig.update_traces(textposition='top center')
     fig.update_layout(height=450)
     st.plotly_chart(fig, use_container_width=True)
-    
-    with st.expander("💡 Key Extreme Events Insights"):
-        st.markdown("""
-        - **Nigeria** faces the highest extreme heat risk (150-200+ days/year >35°C)
-        - **Ethiopia** faces the highest drought frequency (most days with <1mm precipitation)
-        - **Compound events** (heat + drought) increasingly common, especially in Kenya
-        - **Trend:** Extreme heat days increasing across all countries 2015-2026
-        """)
+
+# ============================================================================
+# TAB 4: STATISTICAL COMPARISON
+# ============================================================================
 
 with tab4:
     st.markdown('<h2 class="sub-header">📊 Statistical Comparison</h2>', unsafe_allow_html=True)
@@ -345,8 +421,7 @@ with tab4:
             ('Median', 'median'),
             ('Std Dev', 'std'),
             ('Min', 'min'),
-            ('Max', 'max'),
-            ('Range', lambda x: x.max() - x.min())
+            ('Max', 'max')
         ]).round(2)
         st.markdown("### 📊 Summary Statistics")
         st.dataframe(stats_df, use_container_width=True)
@@ -368,6 +443,10 @@ with tab4:
         )
         fig.update_layout(height=500)
         st.plotly_chart(fig, use_container_width=True)
+
+# ============================================================================
+# TAB 5: VULNERABILITY RANKING
+# ============================================================================
 
 with tab5:
     st.markdown('<h2 class="sub-header">🏆 Climate Vulnerability Ranking</h2>', unsafe_allow_html=True)
@@ -396,9 +475,20 @@ with tab5:
     if vulnerability_data:
         vuln_df = pd.DataFrame(vulnerability_data)
         
-        vuln_df['Heat_Score'] = (vuln_df['Heat Risk (%)'] - vuln_df['Heat Risk (%)'].min()) / (vuln_df['Heat Risk (%)'].max() - vuln_df['Heat Risk (%)'].min()) if vuln_df['Heat Risk (%)'].max() > vuln_df['Heat Risk (%)'].min() else 0
-        vuln_df['Drought_Score'] = (vuln_df['Drought Risk (%)'] - vuln_df['Drought Risk (%)'].min()) / (vuln_df['Drought Risk (%)'].max() - vuln_df['Drought Risk (%)'].min()) if vuln_df['Drought Risk (%)'].max() > vuln_df['Drought Risk (%)'].min() else 0
-        vuln_df['CV_Score'] = (vuln_df['Precip CV'] - vuln_df['Precip CV'].min()) / (vuln_df['Precip CV'].max() - vuln_df['Precip CV'].min()) if vuln_df['Precip CV'].max() > vuln_df['Precip CV'].min() else 0
+        if vuln_df['Heat Risk (%)'].max() > vuln_df['Heat Risk (%)'].min():
+            vuln_df['Heat_Score'] = (vuln_df['Heat Risk (%)'] - vuln_df['Heat Risk (%)'].min()) / (vuln_df['Heat Risk (%)'].max() - vuln_df['Heat Risk (%)'].min())
+        else:
+            vuln_df['Heat_Score'] = 0
+        
+        if vuln_df['Drought Risk (%)'].max() > vuln_df['Drought Risk (%)'].min():
+            vuln_df['Drought_Score'] = (vuln_df['Drought Risk (%)'] - vuln_df['Drought Risk (%)'].min()) / (vuln_df['Drought Risk (%)'].max() - vuln_df['Drought Risk (%)'].min())
+        else:
+            vuln_df['Drought_Score'] = 0
+        
+        if vuln_df['Precip CV'].max() > vuln_df['Precip CV'].min():
+            vuln_df['CV_Score'] = (vuln_df['Precip CV'] - vuln_df['Precip CV'].min()) / (vuln_df['Precip CV'].max() - vuln_df['Precip CV'].min())
+        else:
+            vuln_df['CV_Score'] = 0
         
         vuln_df['Vulnerability_Score'] = (vuln_df['Heat_Score'] * 0.4 + vuln_df['Drought_Score'] * 0.4 + vuln_df['CV_Score'] * 0.2) * 10
         vuln_df = vuln_df.sort_values('Vulnerability_Score', ascending=False).reset_index(drop=True)
@@ -428,23 +518,27 @@ with tab5:
         
         st.markdown("### 🔑 Key Findings for COP32")
         
-        highest_vuln = vuln_df.iloc[0]['Country']
+        highest_vuln = vuln_df.iloc[0]['Country'] if len(vuln_df) > 0 else "No data"
         
         st.markdown(f"""
         <div class="insight-box">
-        <b>🏆 Most Vulnerable Country:</b> {highest_vuln}<br>
+        <b>🏆 Most Vulnerable Country:</b> {highest_vuln}<br><br>
         <b>⚠️ Primary Risks:</b><br>
-        • Extreme heat: {vuln_df.iloc[0]['Heat Risk (%)']}% of days >35°C<br>
-        • Drought stress: {vuln_df.iloc[0]['Drought Risk (%)']}% of days with <1mm precipitation<br>
-        • Precipitation variability: CV = {vuln_df.iloc[0]['Precip CV']}<br><br>
+        • Extreme heat: {vuln_df.iloc[0]['Heat Risk (%)'] if len(vuln_df) > 0 else 'N/A'}% of days >35°C<br>
+        • Drought stress: {vuln_df.iloc[0]['Drought Risk (%)'] if len(vuln_df) > 0 else 'N/A'}% of days with <1mm precipitation<br>
+        • Precipitation variability: CV = {vuln_df.iloc[0]['Precip CV'] if len(vuln_df) > 0 else 'N/A'}<br><br>
         <b>💡 Recommendation for COP32:</b><br>
         {highest_vuln} should be prioritized for climate adaptation funding, with focus on:<br>
-        • Early warning systems<br>
-        • Drought-resistant agriculture<br>
-        • Heat action plans<br>
-        • Water resource management
+        • Early warning systems for drought and heat<br>
+        • Drought-resistant agriculture research<br>
+        • Heat action plans and cooling infrastructure<br>
+        • Water resource management and storage
         </div>
         """, unsafe_allow_html=True)
+
+# ============================================================================
+# FOOTER
+# ============================================================================
 
 st.markdown("---")
 st.markdown(
