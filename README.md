@@ -1,3 +1,14 @@
+# Climate Challenge Week 0
+
+This project explores climate datasets using Git-based workflow practices, reproducible environments, and exploratory data analysis (EDA) across multiple countries.
+
+## Dashboard Pictures
+images/Dashboard_1.png
+images/Dashboard_2.png
+images/Dashboard_3.png
+images/Dashboard_4.png
+images/Dashboard_5.png
+
 # Climate Challenge Week 0 - East Africa Climate Vulnerability Dashboard
 
 ## Overview
