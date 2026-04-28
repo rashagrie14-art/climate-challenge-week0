@@ -1,7 +1,16 @@
-# Climate Challenge Week 0
+# Climate Challenge Week 0 - East Africa Climate Vulnerability Dashboard
 
-This project explores climate datasets using Git-based workflow practices, reproducible environments, and exploratory data analysis (EDA) across multiple countries.
+## Overview
+This dashboard visualizes climate data from five East African countries (Ethiopia, Kenya, Nigeria, Tanzania, Rwanda) to assess climate vulnerability and inform the COP32 position paper.
 
+## Features
+- 🌍 **Country Multi-Selector**: Compare multiple countries simultaneously
+- 📅 **Year Range Slider**: Zoom into specific time periods (2015-2026)
+- 📊 **Variable Selector**: Choose between temperature, precipitation, humidity, and wind metrics
+- 📈 **Temperature Trends**: Monthly and seasonal patterns with statistics
+- 💧 **Precipitation Analysis**: Distribution, variability, and seasonal patterns
+- 🔥 **Extreme Events**: Heat wave and drought frequency analysis
+- 🏆 **Vulnerability Ranking**: Data-driven country ranking for COP32 prioritization
 
 ## Setup Instructions
 
