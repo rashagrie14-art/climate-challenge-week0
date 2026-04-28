@@ -1,7 +1,7 @@
 # Climate Challenge Week 0 - East Africa Climate Vulnerability Dashboard
 
 ## Overview
-This dashboard visualizes climate data from five East African countries (Ethiopia, Kenya, Nigeria, Tanzania, Rwanda) to assess climate vulnerability and inform the COP32 position paper.
+This dashboard visualizes climate data from five East African countries (Ethiopia, Kenya, Nigeria, Tanzania, Sudan) to assess climate vulnerability and inform the COP32 position paper.
 
 ## Features
 - 🌍 **Country Multi-Selector**: Compare multiple countries simultaneously
